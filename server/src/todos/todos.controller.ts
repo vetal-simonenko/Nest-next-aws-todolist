@@ -6,16 +6,22 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 
 import { CreateTodoDto } from './dto/create-todo.dto';
 import { UpdateTodoDto } from './dto/update-todo.dto';
+import { CreateUploadUrlDto } from './dto/create-upload-url.dto';
 import { TodosService } from './todos.service';
+import { AddDocumentDto } from './dto/add-document.dto';
+import { UseGuards } from '@nestjs/common';
+import { CognitoAuthGuard } from '../auth/cognito-auth.guard';
 
 @Controller('todos')
 export class TodosController {
   constructor(private readonly todosService: TodosService) {}
 
+  @UseGuards(CognitoAuthGuard)
   @Post()
   create(@Body() createTodoDto: CreateTodoDto) {
     return this.todosService.create(createTodoDto);
@@ -26,21 +32,44 @@ export class TodosController {
     return this.todosService.findAll();
   }
 
+  @UseGuards(CognitoAuthGuard)
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.todosService.findOne(id);
   }
 
+  @UseGuards(CognitoAuthGuard)
   @Patch(':id')
-  update(
-      @Param('id') id: string,
-      @Body() updateTodoDto: UpdateTodoDto,
-  ) {
+  update(@Param('id') id: string, @Body() updateTodoDto: UpdateTodoDto) {
     return this.todosService.update(id, updateTodoDto);
   }
 
+  @UseGuards(CognitoAuthGuard)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.todosService.remove(id);
+  }
+
+  @UseGuards(CognitoAuthGuard)
+  @Post(':id/documents/upload-url')
+  createDocumentUploadUrl(
+    @Param('id') id: string,
+    @Body() createUploadUrlDto: CreateUploadUrlDto,
+  ) {
+    return this.todosService.createDocumentUploadUrl(id, createUploadUrlDto);
+  }
+
+  @UseGuards(CognitoAuthGuard)
+  @Post(':id/documents')
+  addDocument(@Param('id') id: string, @Body() addDocumentDto: AddDocumentDto) {
+    return this.todosService.addDocument(id, addDocumentDto);
+  }
+
+  @Get(':id/documents/download-url')
+  createDocumentDownloadUrl(
+    @Param('id') id: string,
+    @Query('key') key: string,
+  ) {
+    return this.todosService.createDocumentDownloadUrl(id, key);
   }
 }

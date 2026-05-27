@@ -12,12 +12,16 @@ import { DynamodbService } from '../aws/dynamodb/dynamodb.service';
 import { CreateTodoDto } from './dto/create-todo.dto';
 import { UpdateTodoDto } from './dto/update-todo.dto';
 import { Todo } from './entities/todo.entity';
+import { S3Service } from '../aws/s3/s3.service';
+import { CreateUploadUrlDto } from './dto/create-upload-url.dto';
+import { AddDocumentDto } from './dto/add-document.dto';
 
 @Injectable()
 export class TodosService {
   constructor(
     private readonly dynamodbService: DynamodbService,
     private readonly configService: ConfigService,
+    private readonly s3Service: S3Service,
   ) {}
 
   private get tableName(): string {
@@ -117,5 +121,75 @@ export class TodosService {
     );
 
     return todo;
+  }
+
+  async createDocumentUploadUrl(id: string, dto: CreateUploadUrlDto) {
+    await this.findOne(id);
+
+    const documentId = randomUUID();
+    const key = `todos/${id}/documents/${documentId}-${dto.fileName}`;
+
+    const uploadUrl = await this.s3Service.createPresignedUploadUrl({
+      key,
+      contentType: dto.contentType,
+    });
+
+    return {
+      uploadUrl,
+      key,
+      fileName: dto.fileName,
+      contentType: dto.contentType,
+    };
+  }
+
+  async addDocument(id: string, dto: AddDocumentDto): Promise<Todo> {
+    await this.findOne(id);
+
+    const document = {
+      key: dto.key,
+      fileName: dto.fileName,
+      contentType: dto.contentType,
+      uploadedAt: new Date().toISOString(),
+    };
+
+    const result = await this.dynamodbService.docClient.send(
+      new UpdateCommand({
+        TableName: this.tableName,
+        Key: { id },
+        UpdateExpression:
+          'SET #documents = list_append(if_not_exists(#documents, :emptyList), :document), #updatedAt = :updatedAt',
+        ExpressionAttributeNames: {
+          '#documents': 'documents',
+          '#updatedAt': 'updatedAt',
+        },
+        ExpressionAttributeValues: {
+          ':emptyList': [],
+          ':document': [document],
+          ':updatedAt': new Date().toISOString(),
+        },
+        ReturnValues: 'ALL_NEW',
+      }),
+    );
+
+    return result.Attributes as Todo;
+  }
+
+  async createDocumentDownloadUrl(id: string, key: string) {
+    const todo = await this.findOne(id);
+
+    const document = todo.documents?.find((item) => item.key === key);
+
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    const downloadUrl = await this.s3Service.createPresignedDownloadUrl(key);
+
+    return {
+      downloadUrl,
+      key,
+      fileName: document.fileName,
+      contentType: document.contentType,
+    };
   }
 }
