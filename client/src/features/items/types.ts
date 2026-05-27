@@ -40,3 +40,10 @@ export type AddDocumentInput = {
   fileName: string;
   contentType: string;
 };
+
+export type CreateDownloadUrlResponse = {
+  downloadUrl: string;
+  key: string;
+  fileName: string;
+  contentType: string;
+};

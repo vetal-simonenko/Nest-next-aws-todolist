@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
 
 const createItemSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters'),
@@ -36,15 +37,20 @@ export default function NewItemPage() {
   async function onSubmit(values: CreateItemFormValues) {
     const token = auth.user?.id_token;
 
-    await createItem(
-      {
-        title: values.title,
-        description: values.description,
-      },
-      token,
-    );
+    try {
+      await createItem(
+        {
+          title: values.title,
+          description: values.description,
+        },
+        token,
+      );
 
-    router.push('/items');
+      toast.success('Todo created successfully');
+      router.push('/items');
+    } catch {
+      toast.error('Failed to create todo');
+    }
   }
 
   return (

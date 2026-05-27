@@ -7,6 +7,7 @@ import type {
   AddDocumentInput,
   CreateUploadUrlInput,
   CreateUploadUrlResponse,
+  CreateDownloadUrlResponse,
 } from './types';
 
 export async function updateItem(
@@ -79,4 +80,10 @@ export async function addDocument(
     body: input,
     token,
   });
+}
+
+export async function createDocumentDownloadUrl(todoId: string, key: string) {
+  return apiClient<CreateDownloadUrlResponse>(
+    `/todos/${todoId}/documents/download-url?key=${encodeURIComponent(key)}`,
+  );
 }

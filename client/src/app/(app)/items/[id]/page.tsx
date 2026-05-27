@@ -11,6 +11,7 @@ import {
   deleteItem,
   getItem,
   updateItem,
+  createDocumentDownloadUrl,
 } from '@/features/items/api';
 import { uploadFileToS3 } from '@/features/items/upload-file';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 
 export default function ItemDetailsPage() {
   const params = useParams<{ id: string }>();
@@ -55,9 +57,14 @@ export default function ItemDetailsPage() {
 
     if (!token || !item) return;
 
-    const updatedItem = await updateItem(item.id, { status }, token);
+    try {
+      const updatedItem = await updateItem(item.id, { status }, token);
 
-    setItem(updatedItem);
+      setItem(updatedItem);
+      toast.success('Status updated');
+    } catch {
+      toast.error('Failed to update status');
+    }
   }
 
   async function handleDelete() {
@@ -65,9 +72,14 @@ export default function ItemDetailsPage() {
 
     if (!token || !item) return;
 
-    await deleteItem(item.id, token);
+    try {
+      await deleteItem(item.id, token);
 
-    router.push('/items');
+      toast.success('Todo deleted');
+      router.push('/items');
+    } catch {
+      toast.error('Failed to delete todo');
+    }
   }
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -101,9 +113,24 @@ export default function ItemDetailsPage() {
       );
 
       setItem(updatedItem);
+      toast.success('File uploaded');
+    } catch {
+      toast.error('Failed to upload file');
     } finally {
       setIsUploading(false);
       event.target.value = '';
+    }
+  }
+
+  async function handleDownload(key: string) {
+    if (!item) return;
+
+    try {
+      const data = await createDocumentDownloadUrl(item.id, key);
+
+      window.open(data.downloadUrl, '_blank');
+    } catch {
+      toast.error('Failed to download file');
     }
   }
 
@@ -117,9 +144,15 @@ export default function ItemDetailsPage() {
 
   return (
     <div className="space-y-6">
-      <Button variant="outline" asChild>
-        <Link href="/items">Back to todos</Link>
-      </Button>
+      <div className="flex gap-3">
+        <Button variant="outline" asChild>
+          <Link href="/items">Back to todos</Link>
+        </Button>
+
+        <Button asChild>
+          <Link href={`/items/${item.id}/edit`}>Edit todo</Link>
+        </Button>
+      </div>
 
       <Card>
         <CardHeader>
@@ -152,7 +185,7 @@ export default function ItemDetailsPage() {
             <div>
               <h3 className="font-medium">Documents</h3>
               <p className="text-muted-foreground text-sm">
-                Upload files for this todo.
+                Upload files for this.
               </p>
             </div>
 
@@ -174,10 +207,20 @@ export default function ItemDetailsPage() {
                     key={document.key}
                     className="flex items-center justify-between rounded-lg border p-3 text-sm"
                   >
-                    <span>{document.fileName}</span>
-                    <span className="text-muted-foreground">
-                      {document.contentType}
-                    </span>
+                    <div>
+                      <p>{document.fileName}</p>
+                      <p className="text-muted-foreground text-xs">
+                        {document.contentType}
+                      </p>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownload(document.key)}
+                    >
+                      Download
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -196,7 +239,7 @@ export default function ItemDetailsPage() {
 
           <div className="flex justify-end border-t pt-4">
             <Button variant="destructive" onClick={handleDelete}>
-              Delete todo
+              Delete
             </Button>
           </div>
         </CardContent>
