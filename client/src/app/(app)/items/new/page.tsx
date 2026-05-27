@@ -2,7 +2,10 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import { useRouter } from 'next/navigation';
+import { createItem } from '@/features/items/api';
 import { z } from 'zod';
+import { useAuth } from 'react-oidc-context';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +22,9 @@ const createItemSchema = z.object({
 type CreateItemFormValues = z.infer<typeof createItemSchema>;
 
 export default function NewItemPage() {
+  const router = useRouter();
+  const auth = useAuth();
+
   const {
     register,
     handleSubmit,
@@ -27,8 +33,18 @@ export default function NewItemPage() {
     resolver: zodResolver(createItemSchema),
   });
 
-  function onSubmit(values: CreateItemFormValues) {
-    console.log(values);
+  async function onSubmit(values: CreateItemFormValues) {
+    const token = auth.user?.id_token;
+
+    await createItem(
+      {
+        title: values.title,
+        description: values.description,
+      },
+      token,
+    );
+
+    router.push('/items');
   }
 
   return (

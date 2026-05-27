@@ -1,8 +1,18 @@
+export type TodoStatus = 'todo' | 'in_progress' | 'done';
+
+export type ItemDocument = {
+  key: string;
+  fileName: string;
+  contentType: string;
+  uploadedAt: string;
+};
+
 export type Item = {
   id: string;
   title: string;
   description: string;
-  fileKey?: string;
+  status: TodoStatus;
+  documents?: ItemDocument[];
   createdAt: string;
   updatedAt: string;
 };
@@ -10,5 +20,23 @@ export type Item = {
 export type CreateItemInput = {
   title: string;
   description: string;
-  fileKey?: string;
+  status?: TodoStatus;
+};
+
+export type CreateUploadUrlInput = {
+  fileName: string;
+  contentType: string;
+};
+
+export type CreateUploadUrlResponse = {
+  uploadUrl: string;
+  key: string;
+  fileName: string;
+  contentType: string;
+};
+
+export type AddDocumentInput = {
+  key: string;
+  fileName: string;
+  contentType: string;
 };
