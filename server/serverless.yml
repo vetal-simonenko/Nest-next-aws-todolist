@@ -1,0 +1,23 @@
+service: nest-next-aws-todolist-api
+
+frameworkVersion: "4"
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: eu-central-1
+  stage: dev
+
+functions:
+  api:
+    handler: dist/lambda.handler
+    events:
+      - httpApi:
+          path: /
+          method: "*"
+      - httpApi:
+          path: /{proxy+}
+          method: "*"
+
+plugins:
+  - serverless-offline
