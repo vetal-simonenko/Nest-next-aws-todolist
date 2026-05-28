@@ -1,6 +1,6 @@
 service: nest-next-aws-todolist-api
 
-frameworkVersion: "4"
+frameworkVersion: '4'
 
 provider:
   name: aws
@@ -8,16 +8,44 @@ provider:
   region: eu-central-1
   stage: dev
 
+  environment:
+    DYNAMODB_TODOS_TABLE: Todos
+    S3_DOCUMENTS_BUCKET: nest-next-aws-todolist-documents-vetal
+    COGNITO_USER_POOL_ID: eu-central-1_t1TkLwpWx
+    COGNITO_ISSUER: https://cognito-idp.eu-central-1.amazonaws.com/eu-central-1_t1TkLwpWx
+    COGNITO_CLIENT_ID: 7o1pnop19cf3ojn9jtcp2r8vnb
+    COGNITO_REGION: eu-central-1
+
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Scan
+          Resource:
+            - arn:aws:dynamodb:eu-central-1:*:table/Todos
+
+        - Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:PutObject
+          Resource:
+            - arn:aws:s3:::nest-next-aws-todolist-documents-vetal/*
+
 functions:
   api:
     handler: dist/lambda.handler
     events:
       - httpApi:
           path: /
-          method: "*"
+          method: '*'
       - httpApi:
           path: /{proxy+}
-          method: "*"
+          method: '*'
 
 plugins:
   - serverless-offline

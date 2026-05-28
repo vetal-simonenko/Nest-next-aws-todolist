@@ -5,19 +5,14 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { jwtVerify, createRemoteJWKSet } from 'jose';
 
 @Injectable()
 export class CognitoAuthGuard implements CanActivate {
-  private readonly jwks: ReturnType<typeof createRemoteJWKSet>;
-
-  constructor(private readonly configService: ConfigService) {
-    const issuer = this.configService.getOrThrow<string>('COGNITO_ISSUER');
-
-    this.jwks = createRemoteJWKSet(new URL(`${issuer}/.well-known/jwks.json`));
-  }
+  constructor(private readonly configService: ConfigService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const { createRemoteJWKSet, jwtVerify } = await import('jose');
+
     const request = context.switchToHttp().getRequest();
 
     const authHeader = request.headers.authorization;
@@ -33,7 +28,11 @@ export class CognitoAuthGuard implements CanActivate {
       const clientId =
         this.configService.getOrThrow<string>('COGNITO_CLIENT_ID');
 
-      const { payload } = await jwtVerify(token, this.jwks, {
+      const jwks = createRemoteJWKSet(
+        new URL(`${issuer}/.well-known/jwks.json`),
+      );
+
+      const { payload } = await jwtVerify(token, jwks, {
         issuer,
         audience: clientId,
       });
