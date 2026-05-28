@@ -222,22 +222,6 @@ COGNITO_CLIENT_ID=
 
 ---
 
-# Screenshots
-
-## Dashboard
-
-Add screenshot here
-
-## Todo Details
-
-Add screenshot here
-
-## File Upload
-
-Add screenshot here
-
----
-
 # Future Improvements
 
 * Owner-based authorization
