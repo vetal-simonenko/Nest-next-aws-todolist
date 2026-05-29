@@ -4,7 +4,7 @@ Production-ready fullstack Todo application built with modern AWS serverless arc
 
 ## Live Demo
 
-Frontend: https://main.d3jd8rwts3pkp8.amplifyapp.com
+Frontend: https://main.d3jd8rwts3pkp8.amplifyapp.com/dashboard
 
 ---
 
