@@ -7,12 +7,18 @@ export type TodoDocument = {
   uploadedAt: string;
 };
 
-export class Todo {
+export interface Todo {
   id: string;
+  entityType: 'TODO';
   title: string;
   description?: string;
-  status: TodoStatus;
-  documents?: TodoDocument[];
+  status: 'todo' | 'in_progress' | 'done';
   createdAt: string;
   updatedAt: string;
+  documents?: {
+    key: string;
+    fileName: string;
+    contentType: string;
+    uploadedAt: string;
+  }[];
 }

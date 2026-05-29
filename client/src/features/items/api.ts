@@ -8,6 +8,8 @@ import type {
   CreateUploadUrlInput,
   CreateUploadUrlResponse,
   CreateDownloadUrlResponse,
+  GetItemsResponse,
+  GetItemsParams,
 } from './types';
 
 export async function updateItem(
@@ -51,8 +53,24 @@ export async function getItem(id: string, token?: string) {
   });
 }
 
-export async function getItems() {
-  return apiClient<Item[]>('/todos');
+export async function getItems(params?: GetItemsParams) {
+  const searchParams = new URLSearchParams();
+
+  if (params?.limit) {
+    searchParams.set('limit', String(params.limit));
+  }
+
+  if (params?.cursor) {
+    searchParams.set('cursor', params.cursor);
+  }
+
+  if (params?.search) {
+    searchParams.set('search', params.search);
+  }
+
+  const query = searchParams.toString();
+
+  return apiClient<GetItemsResponse>(`/todos${query ? `?${query}` : ''}`);
 }
 
 export async function createDocumentUploadUrl(
@@ -85,5 +103,19 @@ export async function addDocument(
 export async function createDocumentDownloadUrl(todoId: string, key: string) {
   return apiClient<CreateDownloadUrlResponse>(
     `/todos/${todoId}/documents/download-url?key=${encodeURIComponent(key)}`,
+  );
+}
+
+export async function deleteDocument(
+  todoId: string,
+  key: string,
+  token?: string,
+) {
+  return apiClient<Item>(
+    `/todos/${todoId}/documents?key=${encodeURIComponent(key)}`,
+    {
+      method: 'DELETE',
+      token,
+    },
   );
 }

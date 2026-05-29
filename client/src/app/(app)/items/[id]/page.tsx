@@ -12,6 +12,7 @@ import {
   getItem,
   updateItem,
   createDocumentDownloadUrl,
+  deleteDocument,
 } from '@/features/items/api';
 import { uploadFileToS3 } from '@/features/items/upload-file';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { Trash2 } from 'lucide-react';
 
 export default function ItemDetailsPage() {
   const params = useParams<{ id: string }>();
@@ -134,6 +136,12 @@ export default function ItemDetailsPage() {
     }
   }
 
+  async function handleDeleteDocument(key: string) {
+    const updatedItem = await deleteDocument(item!.id, key);
+
+    setItem(updatedItem);
+  }
+
   if (isLoading) {
     return <p>Loading...</p>;
   }
@@ -214,13 +222,26 @@ export default function ItemDetailsPage() {
                       </p>
                     </div>
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownload(document.key)}
-                    >
-                      Download
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDownload(document.key)}
+                      >
+                        Download
+                      </Button>
+                      <Button
+                        aria-label="Delete"
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive"
+                        title="Delete document"
+                        onClick={() => handleDeleteDocument(document.key)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>

@@ -16,6 +16,7 @@ import { TodosService } from './todos.service';
 import { AddDocumentDto } from './dto/add-document.dto';
 import { UseGuards } from '@nestjs/common';
 import { CognitoAuthGuard } from '../auth/cognito-auth.guard';
+import { FindTodosQueryDto } from './dto/find-todos-query.dto';
 
 @Controller('todos')
 export class TodosController {
@@ -28,8 +29,8 @@ export class TodosController {
   }
 
   @Get()
-  findAll() {
-    return this.todosService.findAll();
+  findAll(@Query() query: FindTodosQueryDto) {
+    return this.todosService.findAll(query);
   }
 
   @UseGuards(CognitoAuthGuard)
@@ -71,5 +72,10 @@ export class TodosController {
     @Query('key') key: string,
   ) {
     return this.todosService.createDocumentDownloadUrl(id, key);
+  }
+
+  @Delete(':id/documents')
+  removeDocument(@Param('id') id: string, @Query('key') key: string) {
+    return this.todosService.removeDocument(id, key);
   }
 }

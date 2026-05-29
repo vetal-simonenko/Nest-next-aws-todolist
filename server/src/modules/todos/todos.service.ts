@@ -2,6 +2,7 @@ import {
   DeleteCommand,
   GetCommand,
   PutCommand,
+  QueryCommand,
   ScanCommand,
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
@@ -15,6 +16,7 @@ import { Todo } from './entities/todo.entity';
 import { S3Service } from '../aws/s3/s3.service';
 import { CreateUploadUrlDto } from './dto/create-upload-url.dto';
 import { AddDocumentDto } from './dto/add-document.dto';
+import { FindTodosQueryDto } from './dto/find-todos-query.dto';
 
 @Injectable()
 export class TodosService {
@@ -33,6 +35,7 @@ export class TodosService {
 
     const todo: Todo = {
       id: randomUUID(),
+      entityType: 'TODO',
       title: createTodoDto.title,
       description: createTodoDto.description,
       status: createTodoDto.status ?? 'todo',
@@ -50,19 +53,100 @@ export class TodosService {
     return todo;
   }
 
-  async findAll(): Promise<Todo[]> {
-    const result = await this.dynamodbService.docClient.send(
-      new ScanCommand({
-        TableName: this.tableName,
-      }),
-    );
+  async findAll(query: FindTodosQueryDto): Promise<{
+    items: Todo[];
+    nextCursor: string | null;
+  }> {
+    const limit = query.limit ? Number(query.limit) : 10;
 
-    const todos = (result.Items ?? []) as Todo[];
+    let exclusiveStartKey = query.cursor
+      ? JSON.parse(Buffer.from(query.cursor, 'base64').toString('utf-8'))
+      : undefined;
 
-    return todos.sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
+    const search = query.search?.trim().toLowerCase();
+
+    if (!search) {
+      const result = await this.dynamodbService.docClient.send(
+        new QueryCommand({
+          TableName: this.tableName,
+          IndexName: 'TodosByCreatedAtIndex',
+          KeyConditionExpression: '#entityType = :entityType',
+          ExpressionAttributeNames: {
+            '#entityType': 'entityType',
+          },
+          ExpressionAttributeValues: {
+            ':entityType': 'TODO',
+          },
+          Limit: limit,
+          ExclusiveStartKey: exclusiveStartKey,
+          ScanIndexForward: false,
+        }),
+      );
+
+      return {
+        items: (result.Items ?? []) as Todo[],
+        nextCursor: result.LastEvaluatedKey
+          ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString(
+              'base64',
+            )
+          : null,
+      };
+    }
+
+    const matchedItems: Todo[] = [];
+    let lastEvaluatedKey: Record<string, unknown> | undefined;
+
+    do {
+      const result = await this.dynamodbService.docClient.send(
+        new QueryCommand({
+          TableName: this.tableName,
+          IndexName: 'TodosByCreatedAtIndex',
+          KeyConditionExpression: '#entityType = :entityType',
+          ExpressionAttributeNames: {
+            '#entityType': 'entityType',
+          },
+          ExpressionAttributeValues: {
+            ':entityType': 'TODO',
+          },
+          Limit: limit,
+          ExclusiveStartKey: exclusiveStartKey,
+          ScanIndexForward: false,
+        }),
+      );
+
+      const items = (result.Items ?? []) as Todo[];
+
+      const found = items.filter((item) => {
+        const title = item.title?.toLowerCase() ?? '';
+        const description = item.description?.toLowerCase() ?? '';
+
+        return title.includes(search) || description.includes(search);
+      });
+
+      matchedItems.push(...found);
+
+      lastEvaluatedKey = result.LastEvaluatedKey;
+      exclusiveStartKey = result.LastEvaluatedKey;
+    } while (matchedItems.length < limit + 1 && lastEvaluatedKey);
+
+    const itemsToReturn = matchedItems.slice(0, limit);
+    const hasMore = matchedItems.length > limit;
+
+    const lastReturnedItem = itemsToReturn.at(-1);
+
+    return {
+      items: itemsToReturn,
+      nextCursor:
+        hasMore && lastReturnedItem
+          ? Buffer.from(
+              JSON.stringify({
+                id: lastReturnedItem.id,
+                entityType: lastReturnedItem.entityType,
+                createdAt: lastReturnedItem.createdAt,
+              }),
+            ).toString('base64')
+          : null,
+    };
   }
 
   async findOne(id: string): Promise<Todo> {
@@ -198,5 +282,40 @@ export class TodosService {
       fileName: document.fileName,
       contentType: document.contentType,
     };
+  }
+
+  async removeDocument(id: string, key: string): Promise<Todo> {
+    const todo = await this.findOne(id);
+
+    const document = todo.documents?.find((item) => item.key === key);
+
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    await this.s3Service.deleteFile(key);
+
+    const updatedDocuments =
+      todo.documents?.filter((item) => item.key !== key) ?? [];
+
+    const result = await this.dynamodbService.docClient.send(
+      new UpdateCommand({
+        TableName: this.tableName,
+        Key: { id },
+        UpdateExpression:
+          'SET #documents = :documents, #updatedAt = :updatedAt',
+        ExpressionAttributeNames: {
+          '#documents': 'documents',
+          '#updatedAt': 'updatedAt',
+        },
+        ExpressionAttributeValues: {
+          ':documents': updatedDocuments,
+          ':updatedAt': new Date().toISOString(),
+        },
+        ReturnValues: 'ALL_NEW',
+      }),
+    );
+
+    return result.Attributes as Todo;
   }
 }

@@ -17,6 +17,17 @@ export type Item = {
   updatedAt: string;
 };
 
+export type GetItemsResponse = {
+  items: Item[];
+  nextCursor: string | null;
+};
+
+export type GetItemsParams = {
+  limit?: number;
+  cursor?: string;
+  search?: string;
+};
+
 export type CreateItemInput = {
   title: string;
   description: string;
