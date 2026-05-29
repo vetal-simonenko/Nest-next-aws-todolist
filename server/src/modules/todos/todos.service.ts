@@ -118,6 +118,8 @@ export class TodosService {
   async remove(id: string): Promise<Todo> {
     const todo = await this.findOne(id);
 
+    await this.s3Service.deleteTodoFiles(id);
+
     await this.dynamodbService.docClient.send(
       new DeleteCommand({
         TableName: this.tableName,
