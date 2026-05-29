@@ -3,7 +3,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
-import { createItem } from '@/features/items/api';
 import { z } from 'zod';
 import { useAuth } from 'react-oidc-context';
 
@@ -13,6 +12,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import {
+  addDocument,
+  createDocumentUploadUrl,
+  createItem,
+} from '@/features/items/api';
+import { uploadFileToS3 } from '@/features/items/upload-file';
 
 const createItemSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters'),
@@ -36,9 +41,15 @@ export default function NewItemPage() {
 
   async function onSubmit(values: CreateItemFormValues) {
     const token = auth.user?.id_token;
+    const file = values.file?.[0];
+
+    if (!token) {
+      toast.error('You are not authenticated');
+      return;
+    }
 
     try {
-      await createItem(
+      const createdItem = await createItem(
         {
           title: values.title,
           description: values.description,
@@ -46,8 +57,31 @@ export default function NewItemPage() {
         token,
       );
 
+      if (file) {
+        const uploadData = await createDocumentUploadUrl(
+          createdItem.id,
+          {
+            fileName: file.name,
+            contentType: file.type,
+          },
+          token,
+        );
+
+        await uploadFileToS3(uploadData.uploadUrl, file);
+
+        await addDocument(
+          createdItem.id,
+          {
+            key: uploadData.key,
+            fileName: uploadData.fileName,
+            contentType: uploadData.contentType,
+          },
+          token,
+        );
+      }
+
       toast.success('Todo created successfully');
-      router.push('/items');
+      router.push(`/items/${createdItem.id}`);
     } catch {
       toast.error('Failed to create todo');
     }

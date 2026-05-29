@@ -57,7 +57,12 @@ export class TodosService {
       }),
     );
 
-    return (result.Items ?? []) as Todo[];
+    const todos = (result.Items ?? []) as Todo[];
+
+    return todos.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
   }
 
   async findOne(id: string): Promise<Todo> {
