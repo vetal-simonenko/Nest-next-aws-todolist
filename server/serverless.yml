@@ -38,7 +38,7 @@ provider:
 
 functions:
   api:
-    handler: dist/lambda.handler
+    handler: dist/lambdas/api/lambda.handler
     events:
       - httpApi:
           path: /
@@ -46,6 +46,14 @@ functions:
       - httpApi:
           path: /{proxy+}
           method: '*'
+
+  imageOptimizer:
+    handler: dist/lambdas/image-optimizer/handler.handler
+    events:
+      - s3:
+          bucket: nest-next-aws-todolist-documents-vetal
+          event: s3:ObjectCreated:*
+          existing: true
 
 plugins:
   - serverless-offline
