@@ -85,39 +85,43 @@ export default function ItemDetailsPage() {
   }
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+    const files = Array.from(event.target.files ?? []);
     const token = auth.user?.id_token;
 
-    if (!file || !token || !item) return;
+    if (files.length === 0 || !token || !item) return;
 
     setIsUploading(true);
 
     try {
-      const uploadData = await createDocumentUploadUrl(
-        item.id,
-        {
-          fileName: file.name,
-          contentType: file.type,
-        },
-        token,
-      );
+      let updatedItem = item;
 
-      await uploadFileToS3(uploadData.uploadUrl, file);
+      for (const file of files) {
+        const uploadData = await createDocumentUploadUrl(
+          item.id,
+          {
+            fileName: file.name,
+            contentType: file.type,
+          },
+          token,
+        );
 
-      const updatedItem = await addDocument(
-        item.id,
-        {
-          key: uploadData.key,
-          fileName: uploadData.fileName,
-          contentType: uploadData.contentType,
-        },
-        token,
-      );
+        await uploadFileToS3(uploadData.uploadUrl, file);
+
+        updatedItem = await addDocument(
+          item.id,
+          {
+            key: uploadData.key,
+            fileName: uploadData.fileName,
+            contentType: uploadData.contentType,
+          },
+          token,
+        );
+      }
 
       setItem(updatedItem);
-      toast.success('File uploaded');
+      toast.success('Files uploaded');
     } catch {
-      toast.error('Failed to upload file');
+      toast.error('Failed to upload files');
     } finally {
       setIsUploading(false);
       event.target.value = '';
@@ -199,6 +203,7 @@ export default function ItemDetailsPage() {
 
             <Input
               aria-label="file"
+              multiple
               type="file"
               disabled={isUploading}
               onChange={handleFileChange}

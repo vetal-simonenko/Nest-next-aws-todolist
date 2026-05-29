@@ -41,7 +41,7 @@ export default function NewItemPage() {
 
   async function onSubmit(values: CreateItemFormValues) {
     const token = auth.user?.id_token;
-    const file = values.file?.[0];
+    const files = Array.from(values.file ?? []) as File[];
 
     if (!token) {
       toast.error('You are not authenticated');
@@ -57,7 +57,7 @@ export default function NewItemPage() {
         token,
       );
 
-      if (file) {
+      for (const file of files) {
         const uploadData = await createDocumentUploadUrl(
           createdItem.id,
           {
@@ -100,6 +100,7 @@ export default function NewItemPage() {
               <Label htmlFor="title">Title</Label>
 
               <Input
+                aria-label="title"
                 id="title"
                 placeholder="Enter title"
                 {...register('title')}
@@ -114,6 +115,7 @@ export default function NewItemPage() {
               <Label htmlFor="description">Description</Label>
 
               <Textarea
+                aria-label="description"
                 id="description"
                 placeholder="Enter description"
                 {...register('description')}
@@ -129,7 +131,13 @@ export default function NewItemPage() {
             <div className="space-y-2">
               <Label htmlFor="file">File</Label>
 
-              <Input id="file" type="file" {...register('file')} />
+              <Input
+                aria-label="file"
+                id="file"
+                multiple
+                type="file"
+                {...register('file')}
+              />
             </div>
 
             <Button type="submit" disabled={isSubmitting}>
